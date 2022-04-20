@@ -1,0 +1,33 @@
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: {{ .Release.Name }}
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        ports:
+        - containerPort: {{ .Values.mysqlport }}
+        volumeMounts:
+        - name:  {{ .Values.pvcname }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcname }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcname }}  

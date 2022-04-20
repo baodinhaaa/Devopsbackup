@@ -1,0 +1,6 @@
+Cài đặt live helper chat
+
+Cài 1 nginx, 1 PHP
+trong file cấu hình nginx,phần fastCGI trỏ về IP của service PHP và port 9000(theo như đã cấu hình)
+Copy folder livehelperchat vào /var/www/html
+Cấp quyền chmod 755 cho các folder 

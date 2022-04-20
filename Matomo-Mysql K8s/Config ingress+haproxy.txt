@@ -1,0 +1,10 @@
+Cấu hình Haproxy trỏ vào ingress
+
+B1: Cài nginx ingress controller
+B2: xem NodePort của service/nginx-ingress-controller. Ví dụ: 80:31826
+B3 Cấu hình haproxy trỏ vào port ánh xạ vào port 80 của service/nginx-ingress-controller
+Như ví dụ là trỏ vào port 31826
+B4: Cấu hình ingress resource với host là tên miền.Ví dụ: pshung.tk
+B5: Cấu hình haproxy cho phép 443 và ssl trỏ đến file cert ssl
+B5: Cấu hình trong file ingress enable tls,tạo 1 secret copy các file cert của tên miền
+B6: Trỏ DNS host A của tên miển vào IP của haproxy

@@ -1,0 +1,5 @@
+svcport: 9001
+tgport: 9000
+pvclhc: lhc-volume
+pvccode: code-volume
+pvcphp: php-volume

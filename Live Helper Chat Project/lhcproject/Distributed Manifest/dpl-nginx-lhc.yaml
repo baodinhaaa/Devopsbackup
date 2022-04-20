@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+  namespace: lhc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-app 
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-app
+    spec:
+      volumes:
+      - name: {{ .Values.pvcnginx }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcnginx}}
+      - name: {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: lhc-nginx-config
+        configMap:
+          name: lhc-nginx-config   
+      containers:
+      - name: {{ .Release.Name }}-app
+        image: nginx:latest 
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+ #       command: ["/bin/bash"]
+#        args: ["-c", "apt update -y && apt install nodejs npm -y"]
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: /etc/nginx/conf.d/
+          name: lhc-nginx-config
+        - mountPath:  /etc/nginx/ 
+          name: {{ .Values.pvcnginx }}
+      - name: abc
+        image: nginx:latest
+        #- mountPath:  /var/log/nginx/
+        #  name: {{ .Values.pvcnginx }}                                      

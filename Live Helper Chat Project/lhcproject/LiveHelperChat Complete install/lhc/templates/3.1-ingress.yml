@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  labels:
+    name: {{ .Release.Name }}-ingress
+  namespace: lhc
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+      - pshung.tk
+      secretName: lhc-secret-tls
+  rules:
+  - host: pshung.tk
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: lhc-app
+            port: 
+              number: 8080

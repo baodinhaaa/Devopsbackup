@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-resque
+  namespace: lhc
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-resque
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-resque
+   
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name:  {{ .Values.pvcphp }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-resque
+        image: remdex/livehelperchat-php-resque:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}

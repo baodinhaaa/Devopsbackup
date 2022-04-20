@@ -1,0 +1,15 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name:  {{ .Release.Name }}-db
+  namespace: lhc
+spec:
+  selector:
+    app: {{ .Release.Name }}-db
+  type: ClusterIP
+  ports:
+  - name: mysql-port
+    port:  {{ .Values.svcport_db }}
+    targetPort: {{ .Values.tgport_db }}
+    #nodePort: 30306
+---

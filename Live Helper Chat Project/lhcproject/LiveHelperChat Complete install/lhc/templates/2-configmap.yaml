@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-nginx-config
+  namespace: lhc
+data:
+  nginx.conf: |
+  {{- .Files.Get "site-nodejs.conf" | nindent 4 }}
+ 

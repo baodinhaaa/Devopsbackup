@@ -1,0 +1,18 @@
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-php-volume
+  namespace: lhc
+  labels:
+    name: {{ .Release.Name }}-php-volume
+spec:
+  storageClassName: lhc-nfs-csi
+  capacity:
+    storage: 200Mi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/php/"
+    server: "172.31.38.220"
+---

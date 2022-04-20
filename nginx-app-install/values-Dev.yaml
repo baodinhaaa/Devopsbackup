@@ -1,0 +1,14 @@
+replicas: 1
+resources:
+  memory: 128Mi
+  cpu: 100m
+env: Devolopment
+
+#cpurate: 50
+
+hpa:
+  enabled: false
+
+service:
+  port: 8880
+  tgport: 80

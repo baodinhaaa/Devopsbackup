@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-app
+  namespace: lhc
+spec:
+  selector:
+    app: {{ .Release.Name }}-app
+  ports:
+  - port: {{ .Values.svcport_lhc_app }}
+    targetPort: {{ .Values.tgport_lhc_app }}
+    nodePort: 31080
+  type: NodePort
+---
+  

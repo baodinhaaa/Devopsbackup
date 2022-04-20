@@ -1,0 +1,17 @@
+Ngày 6: Sử dụng Helm,Nginx ingress
+-Các khi tạo 1 Helm chart sẽ tạo ra 1 thư mục,trong đó chứa các file của Helm
+-File values chứa các giá trị sẽ được gán vào các file trong template
+-Các file trong template sẽ lấy giá trị từ file values bằng cách khai báo {{ .Values.tên biến }}
+-Biến .Release.Name để truyền vào tên Release khi Dùng lệnh helm install
+-Các pod cần được expose tức là tạo ra 1 service trỏ về các POd đó,khi sử dụng service sẽ 
+ghi IP của service đó.
+-Ingress Controller có IP external ở trạng thái pending là do ko có loadbalancer nào đứng trước cluster.
+ 
+Ngày 7: Sử dụng PV NFS,Ingress
+-Nếu mount nfs volume gặp lỗi need /sbin/mount thì xem pod được cài trên node nào và cài nfs-common lên node đó.
+-Có thể kết nối tới các service khác trogn cluster thông qua tên service
+Ngày 8: Xây dựng mô hình Haproxy và Ingress
+-Haproxy dựng trên 1 máy riêng,trỏ vào port 3xxxx của svc/nginx-ingress-controler
+-Tạo 1 ingress resource,host là domain muốn vào
+-Domain trỏ vào IP của haproxy
+-Cài k9s bằng docker,1 lệnh duy nhất: docker run --rm -it -v $KUBECONFIG:/root/.kube/config quay.io/derailed/k9s

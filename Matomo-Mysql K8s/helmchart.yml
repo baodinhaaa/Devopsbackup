@@ -1,0 +1,7 @@
+apiVersion: v2
+name: matomochart
+type: application
+version: 0.1.0
+replicacount: 1
+image: 
+repository: 

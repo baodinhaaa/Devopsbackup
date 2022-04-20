@@ -1,0 +1,72 @@
+Ngày 1: Các khái niệm và cách cài đặt k8s cơ bản
+-Khi cài kubeadm và kubeadm init trên Ubuntu có thể gặp lỗi : tcp 127.0.0.1:10248: connect: connection refused.
+Fix theo link sau:
+https://stackoverflow.com/questions/54728254/kubernetes-kubeadm-init-fails-due-to-dial-tcp-127-0-0-110248-connect-connecti
+-Nếu đã join mà các Node ở trạng thái NotReady thì xem lại plugin mạng đã cài chưa.
+	-Cài bằng lệnh:
+		kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
+	-Sử dụng plugin mạng calio
+-Triển khai 1 pod cần sdùng file yaml,sau đó dùng lệnh kubectl apply -f "file yaml"
+-Để xóa pod thay apply bằng delete.
+-Hiển thị các event xảy ra trong cluster bằng lệnh kubectl get event
+-K8s Dashboard chỉ có thể truy cập được bằng chính máy chạy dashboard đó nếu dùng url: 
+		http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+Ngày 2:
+-Muốn truy cập vào 1 container đang chạy,ví dụ container nginx chạy trong pod nginxapp
+	Bước 1: Gõ lệnh kubectl proxy,sau khi gõ sẽ hiện ra 127.0.0.1:8001
+	Bước 2: Y=Truy cập vào container nginx bằng URL:
+			http://localhost:8001/api/v1/namespaces/default/pods/nginxapp/proxy/
+-Mount volume:
+	Khai báo như sau:
+	   spec:  
+		volumes:
+    			# Định nghĩa một volume - ánh xạ thư mục /home/www máy host
+    			- name: "myvol"
+      		hostPath:
+          		path: "/home/html"
+	-Đây là loại mount volume trên host,host nào chạy container này thì sẽ mount vào dir trên host đó.
+-Một pod sẽ chạy ngẫu nhiên trên các worker node,để gán cho pod chỉ chạy trên 1 node xác định,khai báo như sau:
+		nodeSelector:
+      		kubernetes.io/hostname: ip-172-31-38-220
+		Trong chỉ thị spec:, ngang hàng với volumes và containers
+***ReplicaSet: Là 1 controller quản lí các Pod
+	-Replicaset quản lí các Pod bằng nhãn,ví dụ khai báo matchLabels: app=rsapp thì replicaset này sẽ quản lí
+	các Pod có nhãn app=rsapp
+	-Khi 1 Pod tạo độc lập trước đó có nhãn này,Replicaset sẽ quản lí luôn Pod đó và tạo thêm các Pod để đủ
+	số lượng khai báo trong mục replicas.
+		Ví dụ: replicas=3 và đang có 1 pod độc lập có nhãn rsapp thì replicaset này sẽ quản lí Pod có sắn,
+		đồng thời tạo thêm 2 Pod nữa.
+***Horizontal Pod Autoscaler(HPA)***
+	-Là chế độ tự động Scale(Nhân bản pod) dựa vào mức độ hoạt động của CPU đối với Pod,nếu 1 Pod quá tải,nó có thể
+	nhân bản thêm Pod khác và ngược lại.
+	-HPA tác động đến repicaset
+	-Lệnh cơ bản: kubectl autoscale rs rsapp --max=2 --min=1
+		Trong đó chỉ số min và max là số pod min,max,khi áp dụng cho replicaset nó sẽ thay đổi số lượng Pod theo
+		các chỉ số này.
+	-Thường dùng bằng cách viết file yaml như các loại khác.
+***Deployment***
+	-Là một phiên bản tổng hợp của các phần trên,to hơn replicaset
+***Service***
+	-Là một dịch vụ xác định 1 nhóm các pod và chính sách được sử dụng
+***Ingress*** 
+	-Giống như 1 proxy expose từ bên ngoài vào trong cluster,với ingress có thể atruy cập vào service thông qua tên domain 
+	từ máy client
+	-Một trong các loại ingress là haproxy ingress và nginx ingress.
+***StatefullSet
+	-Khác với replicaset,các pod trong statefullset được quản lí theo 1 thứ tự xác định,rõ ràng và ổn định
+	-Dùng cho các statefull app
+	-Các pod trong statefullset có tính ổn định(không ngẫu nhiên như replicaset),có network identity ổn định.
+***Persistent Volume và PV claim
+	-PV là 1 storage tách biệt với pod,ko bị xóa khi xóa pod
+	-PVC là 1 request sử dụng PV
+	-PVC giống như pod còn PV giống như Node
+	-K8s sẽ tìm PV đáp ứng yêu cầu của PVC.
+***Các thành phần trong Kubernetes cluster***
+	-Các thành phần trong cluster như : etcd,scheduler,controller-manager,kube-proxy... sẽ chạy như 1 pod 
+	trong name space là kube-system
+	-Riêng Kubelet sẽ chạy như 1 dịch vụ(1 ứng dụng) cài trực tiếp trên máy node.
+Ngày 3: -Dyployment:Chỉ khai báo được 1 image trong phần template của deployment file
+	  -targetPort là port gốc của container(80...)
+	  -Port là port của service,map tới target port
+	  -nodePort là port mở trên 1 node sẽ map tới service port.
+        -Các thành phần của K8s tương tác với API server,API server tương tác với etcd

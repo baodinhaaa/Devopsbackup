@@ -1,0 +1,35 @@
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-volume
+  namespace: lhc
+  labels:
+    name: {{ .Release.Name }}-volume
+spec:
+  #storageClassName: lhc-nfs-csi
+  capacity:
+    storage: {{ .Values.capacitylhc }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/lhc/"
+    server: "172.31.38.220"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-nginx-volume
+  namespace: lhc
+  labels:
+    name: {{ .Release.Name }}-nginx-volume
+spec:
+  #storageClassName: lhc-nfs-csi
+  capacity:
+    storage: {{ .Values.capacity_nginx }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/nginx/"
+    server: "172.31.38.220"
+---

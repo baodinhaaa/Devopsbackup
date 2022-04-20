@@ -1,0 +1,32 @@
+Gồm các chart:
+lhc
+nginx
+lhc-volume
+
+Cấu hình theo file docker-compose:
+
+nginx:mountPath /etc/nginx/ và /var/www/html vào cùng 1 pvc nfs lhc-volume(pvcname1)
+	mountPath /etc/nginx/conf.d/ vào pvcname2( tên configmap)
+	Nếu báo upstream not found là đã mount đúng
+	Trong thư mục NFS copy các file để ở /mnt/lhc
+php:	mountPath /code/ để chứa lhc_web 
+		    /code/extension/lhcresque
+		    /code/extension/nodejshelper
+		    /usr/local/etc/php-fpm.d/zz-lhc.conf
+	Tất cả mount chung vào volume lhc-volume
+	Trong thư mục /mnt/lhc/ để tất cả các file và foler được mount vào php ở ngoài
+
+Các lỗi: lỗi php ko đọc file cấu hình zz-lhc.conf:
+	-Bỏ nó ra chỗ khác
+-Lỗi ko thể truy cập trang khi các service đều running: có thể do PHP và nginx chưa cùng 1 thư mục code,
+	hay nói các khác,PHP chưa tìm thấy code trong thư mục cần đọc,cần mount nginx và php chung 1 thư mục
+-Lỗi load được nhưng blank web page: do thiếu include fastcgi_params trong file cấu hình nginx,tạo thêm
+	file fastcgi_params và paste các biến vào theo mẫu và đặt file này vào /etc/nginx
+-Lỗi load ra nhưng không load được ảnh,logo ( lỗi nginx open(.png) failed (2: No such file or directory) )
+	là do nginx chưa tìm đúng thư mục cấu hình,fix bằng các mount trực tiếp thư mục lhc_web vào thư mục /code
+	trong nginx
+	đồng thời chmod -R +x tất cả các file trong thư mục
+-Lỗi 301 moved parmanently khi dùng nginx ingress và haproxy:
+	Do trong ingress khai báo cả TLS trong khi haproxy cũng dùng https
+	Fix: xóa phần TLS trong ingress manifest,chỉ để SSL ở haproxy
+-Service type của nginx ingress phải là nodeport,haproxy trỏ vào ipnode:port 3xxxx

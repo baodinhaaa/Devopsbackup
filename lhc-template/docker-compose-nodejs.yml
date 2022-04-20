@@ -1,0 +1,97 @@
+version: '3'
+
+services:
+  web:
+    image: nginx:latest
+    env_file: .env
+    ports:
+      - "${LHC_PUBLIC_PORT}:80"
+    volumes:
+      - ./livehelperchat/lhc_web:/code
+      - ./conf/nginx/site-nodejs.conf:/etc/nginx/conf.d/default.conf
+      - ./conf/nginx/mime.types:/etc/nginx/mime.types
+      - ./conf/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - db
+      - php
+      - php-cronjob
+    networks:
+      - code-network
+    restart: always
+  php:
+    build: ./Dockerfiles/php
+    image: remdex/livehelperchat-php:latest
+    env_file: .env
+    volumes:
+      - ./livehelperchat/lhc_web:/code
+      - ./lhc-php-resque/lhcphpresque:/code/extension/lhcphpresque
+      - ./NodeJS-Helper/nodejshelper:/code/extension/nodejshelper
+      - ./conf/scripts:/scripts
+      - ./conf/php-fpm/zz-lhc.conf:/usr/local/etc/php-fpm.d/zz-lhc.conf
+    networks:
+      - code-network
+    restart: always
+  cobrowse:
+    build: ./Dockerfiles/cobrowse
+    image: remdex/livehelperchat-cobrowse:latest
+    ports:
+      - 127.0.0.1:31130:31130
+    networks:
+      - code-network
+    restart: always
+  php-cronjob:
+    build: ./Dockerfiles/cronjob
+    image: remdex/livehelperchat-php-cronjob:latest
+    env_file: .env
+    volumes:
+      - ./livehelperchat/lhc_web:/code
+      - ./lhc-php-resque/lhcphpresque:/code/extension/lhcphpresque
+      - ./NodeJS-Helper/nodejshelper:/code/extension/nodejshelper
+      - ./conf/scripts:/scripts
+    networks:
+      - code-network
+    restart: always
+  php-resque:
+    build: ./Dockerfiles/php-resque
+    image: remdex/livehelperchat-php-resque:latest
+    env_file: .env
+    volumes:
+      - ./livehelperchat/lhc_web:/code
+      - ./lhc-php-resque/lhcphpresque:/code/extension/lhcphpresque
+      - ./NodeJS-Helper/nodejshelper:/code/extension/nodejshelper
+      - ./conf/scripts:/scripts
+    networks:
+      - code-network
+    depends_on:
+      - db
+      - redis
+    restart: always
+  nodejshelper:
+    build: ./Dockerfiles/nodejshelper
+    image: remdex/livehelperchat-nodejshelper:latest
+    env_file: .env
+    depends_on:
+      - redis
+    networks:
+      - code-network
+    restart: always
+  redis:
+    image: "redis:alpine"
+    networks:
+      - code-network
+    restart: always
+  db:
+    image: mysql:5
+    env_file: .env
+    environment:
+      TZ: UTC
+    volumes:
+      - ./dbdata:/var/lib/mysql
+    ports:
+      - 127.0.0.1:3307:3306
+    networks:
+      - code-network
+    restart: always
+networks:
+  code-network:
+    driver: bridge

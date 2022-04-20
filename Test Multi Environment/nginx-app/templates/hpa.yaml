@@ -1,0 +1,17 @@
+{{- if .Values.hpa.enabled -}}
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}
+  namespace: nginx
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind:   Deployment
+    name: {{ .Release.Name }}
+  minReplicas: 3
+  maxReplicas: 10
+  # Thực hiện scale CPU hoạt động ở 60% so với CPU mà POD yêu cầu
+  targetCPUUtilizationPercentage: {{ .Values.cpurate }}
+
+{{- end -}}

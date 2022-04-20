@@ -1,0 +1,6 @@
+memory: "128Mi"
+cpu: "100m"
+ports: 80
+nodeport: 31080
+svcport: 80
+pvcname: matomo-volume

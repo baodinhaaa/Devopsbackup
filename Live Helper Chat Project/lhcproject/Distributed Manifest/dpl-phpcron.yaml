@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-cronjob
+  namespace: lhc
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-cronjob
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-cronjob
+   
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-cronjob
+        image: remdex/livehelperchat-php-cronjob:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+#        ports:
+ #       - containerPort: 31130
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+           
+    

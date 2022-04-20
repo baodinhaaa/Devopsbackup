@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-cobrowser
+  namespace: lhc
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-cobrowser
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-cobrowser
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-cobrowser
+        image: remdex/livehelperchat-cobrowse:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 31130

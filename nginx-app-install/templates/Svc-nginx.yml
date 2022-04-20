@@ -1,0 +1,23 @@
+kind: Service
+apiVersion: v1
+metadata:
+  {{- if eq .Values.env "Production" }}
+  name:  {{ .Release.Name }}-devolopment
+  {{- else }}
+  name: {{ .Release.Name }}-test
+  {{- end }}
+spec:
+  selector:
+    app:  nginx
+  {{- if eq .Values.env "Production" }}
+  type: NodePort
+  {{- else }}
+  type: ClusterIP
+  {{- end }}
+  ports:
+  - name:  {{ .Release.Name }}
+    {{- with .Values.service }}
+    {{ include "nginx-app.port" . | nindent 4}}
+    {{- end -}}
+
+

@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php
+  namespace: lhc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php  
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php
+  
+    spec:
+      volumes:
+      - name: {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvclhcvolume }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvclhcvolume }}
+      - name: {{ .Values.pvcphp}}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php
+        image: remdex/livehelperchat-php:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/lhcphpresque"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/nodjshelper"
+          name: {{ .Values.pvccode }}
+        - mountPath: /scripts
+          name: {{ .Values.pvcphp }}
+        

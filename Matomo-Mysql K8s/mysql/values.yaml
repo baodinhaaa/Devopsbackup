@@ -1,0 +1,5 @@
+secretname: mysqlsecret
+mysqlport: 3306
+pvcname: matomo-volume
+dbenv: MYSQL_ROOT_PASSWORD
+svcport: 3306

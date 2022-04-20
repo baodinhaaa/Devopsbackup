@@ -1,0 +1,7 @@
+Dùng haproxy forward tcp, để ingress xử lý ssl
+Kết nối k8s từ máy local
+Cài ingress bằng custom values file,clone project từ github
+1 project cho hết vào 1 template(pv,pvc,deploy.svc...)
+Cài 1 project vào cùng 1 namespace
+Tạo prj cài ở tất cả các môi trường,custom bằng values file
+-Docker login vào 1 private repo dockerhub dùng secret trong helm.Dùng secret login vào mới pull được image về

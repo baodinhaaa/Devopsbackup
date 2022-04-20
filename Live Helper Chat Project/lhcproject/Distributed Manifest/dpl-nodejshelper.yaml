@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nodejshelper
+  namespace: lhc
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-nodejshelper
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-nodejshelper
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-nodejshelper
+        image: remdex/livehelperchat-nodejshelper:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "400m"
+        ports:
+        - containerPort: 3000

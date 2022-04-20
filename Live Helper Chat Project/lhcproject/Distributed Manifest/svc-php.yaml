@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-php
+  namespace: lhc
+spec:
+  selector:
+    app: {{ .Release.Name }}-php
+  ports:
+  - port: {{ .Values.svcport_php }}
+    targetPort: {{ .Values.tgport_php }}
+    #nodePort: 31081
+  type: ClusterIP
+---

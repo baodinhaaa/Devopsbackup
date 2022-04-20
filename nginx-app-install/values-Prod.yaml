@@ -1,0 +1,15 @@
+replicas: 3
+resources:
+  memory: 200Mi
+  cpu: 256m
+env: Production
+
+kind: statefulset
+cpurate: 60
+
+hpa:
+  enabled: True
+
+service:
+  port: 8880
+  tgport: 80
