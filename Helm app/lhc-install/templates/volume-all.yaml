@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-db-volume
+  namespace: {{ .Values.ns }}
+  labels:
+    name: {{ .Release.Name }}-db-volume
+spec:
+  #storageClassName: {{ .Values.stgclass }}
+  capacity:
+    storage: {{ .Values.capacity_db }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/database/"
+    server: "172.31.38.220"
+---
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-volume
+  namespace: {{ .Values.ns }}
+  labels:
+    name: {{ .Release.Name }}-volume
+spec:
+  #storageClassName: {{ .Values.stgclass }}
+  capacity:
+    storage: {{ .Values.capacitylhc }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/lhc/"
+    server: "172.31.38.220"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-nginx-volume
+  namespace: {{ .Values.ns }}
+  labels:
+    name: {{ .Release.Name }}-nginx-volume
+spec:
+  #storageClassName: {{ .Values.stgclass }}
+  capacity:
+    storage: {{ .Values.capacity_nginx }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/nginx/"
+    server: "172.31.38.220"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-php-volume
+  namespace: {{ .Values.ns }}
+  labels:
+    name: {{ .Release.Name }}-php-volume
+spec:
+  storageClassName: {{ .Values.stgclass }}
+  capacity:
+    storage: 200Mi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/php/"
+    server: "172.31.38.220"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .Release.Name }}-code-volume
+  namespace: {{ .Values.ns }}
+  labels:
+    name: {{ .Release.Name }}-code-volume
+spec:
+  storageClassName: {{ .Values.stgclass }}
+  capacity:
+    storage: {{ .Values.capacity_code }}
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: "/mnt/code/"
+    server: "172.31.38.220"
+
+
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}-nfs-csi
+  namespace: {{ .Values.ns }}
+provisioner: kubernetes.io/no-provisioner
+#volumeBindingMode: WaitForFirstConsumer

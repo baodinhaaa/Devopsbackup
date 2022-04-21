@@ -1,0 +1,788 @@
+# Create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  {{- if eq .Values.env "prod" }}
+  name: {{ .Values.ns}}
+  {{- else if eq .Values.env "qa" }}
+  name: {{ .Values.ns }}
+  {{- else if eq .Values.env "dev" -}}
+  name: {{ .Values.ns }}
+  {{- end }}
+---
+#### For production environment ####
+{{- if eq .Values.env "prod" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app-production
+  namespace: {{ .Values.ns }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-app-production 
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-app-production
+    spec:
+      volumes:
+      - name: {{ .Values.pvcnginx }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcnginx}}
+      - name: {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp}}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      - name: {{ .Values.nginx_config }}
+        configMap:
+          name: {{ .Values.nginx_config }}   
+      containers:
+      - name: {{ .Release.Name }}-app-production
+        image: nginx:latest 
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+ #       command: ["/bin/bash"]
+#        args: ["-c", "apt update -y && apt install nodejs npm -y"]
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: /etc/nginx/conf.d/
+          name: {{ .Values.nginx_config }}
+        - mountPath:  /etc/nginx/ 
+          name: {{ .Values.pvcnginx }}
+        - mountPath:  /var/log/nginx/
+          name: {{ .Values.pvcnginx }}
+
+        # PHP container
+      - name: {{ .Release.Name }}-php-production
+        image: remdex/livehelperchat-php:latest
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/lhcphpresque"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/nodjshelper"
+          name: {{ .Values.pvccode }}
+        - mountPath: /scripts
+          name: {{ .Values.pvcphp }}
+      #- name: abc
+       # image: nginx:latest
+        #- mountPath:  /var/log/nginx/
+        #  name: {{ .Values.pvcnginx }}                                      
+
+#MariaDB
+---
+apiVersion: apps/v1
+{{- if eq .Values.kind "statefulset" }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ .Release.Name }}-db-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db-production
+  {{- if and (eq .Values.kind "statefulset") (eq .Values.env "prod") }}
+  serviceName: {{ .Release.Name }}-db-production
+  {{- end }}  
+  template:
+    metadata:
+      labels:
+       app: {{ .Release.Name }}-db-production
+    spec:    
+      containers:
+      - name: {{ .Release.Name }}-db-production
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        resources:
+        {{- include "db.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name:  {{ .Values.pvcdatabase }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcdatabase }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcdatabase }}  
+---
+# PHP resque
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-resque-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-resque-production
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-resque-production
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name:  {{ .Values.pvcphp }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-resque-production
+        image: remdex/livehelperchat-php-resque:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+
+# Cobrowser
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-cobrowser-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-cobrowser-production
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-cobrowser-production
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-cobrowser-production
+        image: remdex/livehelperchat-cobrowse:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 31130
+
+# NodeJS helper        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nodejshelper-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-nodejshelper-production
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-nodejshelper-production
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-nodejshelper-production
+        image: remdex/livehelperchat-nodejshelper:latest
+        resources:
+        {{- include "nodejs.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3000
+
+# PHP cronjob
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-cronjob-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-cronjob-production
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-cronjob-production
+   
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-cronjob-production
+        image: remdex/livehelperchat-php-cronjob:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+#        ports:
+ #       - containerPort: 31130
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+# Redis
+---    
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-redis-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-redis-production
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-redis-production
+    spec:
+      containers:
+      - name: {{ .Release.Name }}
+        image: "redis:alpine"
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 6379
+
+#### For QA environment ####
+{{- else if eq .Values.env "qa" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app-qa
+  namespace: {{ .Values.ns }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-app-qa 
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-app-qa
+    spec:
+      volumes:
+      - name: {{ .Values.pvcnginx }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcnginx}}
+      - name: {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp}}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      - name: {{ .Values.nginx_config }}
+        configMap:
+          name: {{ .Values.nginx_config }}   
+      containers:
+      - name: {{ .Release.Name }}-app-qa
+        image: nginx:latest 
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+ #       command: ["/bin/bash"]
+#        args: ["-c", "apt update -y && apt install nodejs npm -y"]
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: /etc/nginx/conf.d/
+          name: {{ .Values.nginx_config }}
+        - mountPath:  /etc/nginx/ 
+          name: {{ .Values.pvcnginx }}
+        - mountPath:  /var/log/nginx/
+          name: {{ .Values.pvcnginx }}
+
+        # PHP container
+      - name: {{ .Release.Name }}-php-qa
+        image: remdex/livehelperchat-php:latest
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/lhcphpresque"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/nodjshelper"
+          name: {{ .Values.pvccode }}
+        - mountPath: /scripts
+          name: {{ .Values.pvcphp }}
+      #- name: abc
+       # image: nginx:latest
+        #- mountPath:  /var/log/nginx/
+        #  name: {{ .Values.pvcnginx }}                                      
+
+#MariaDB
+---
+apiVersion: apps/v1
+{{- if eq .Values.kind "statefulset" }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ .Release.Name }}-db-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db-qa
+  {{- if and (eq .Values.kind "statefulset") (eq .Values.env "prod") }}
+  serviceName: {{ .Release.Name }}-db-qa
+  {{- end }}  
+  template:
+    metadata:
+      labels:
+       app: {{ .Release.Name }}-db-qa
+    spec:    
+      containers:
+      - name: {{ .Release.Name }}-db-qa
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        resources:
+        {{- include "db.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name:  {{ .Values.pvcdatabase }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcdatabase }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcdatabase }}  
+---
+# PHP resque
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-resque-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-resque-qa
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-resque-qa
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name:  {{ .Values.pvcphp }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-resque-qa
+        image: remdex/livehelperchat-php-resque:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+
+# Cobrowser
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-cobrowser-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-cobrowser-qa
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-cobrowser-qa
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-cobrowser-qa
+        image: remdex/livehelperchat-cobrowse:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 31130
+
+# NodeJS helper        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nodejshelper-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-nodejshelper-qa
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-nodejshelper-qa
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-nodejshelper-qa
+        image: remdex/livehelperchat-nodejshelper:latest
+        resources:
+        {{- include "nodejs.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3000
+
+# PHP cronjob
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-cronjob-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-cronjob-qa
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-cronjob-qa
+   
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-cronjob-qa
+        image: remdex/livehelperchat-php-cronjob:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+#        ports:
+ #       - containerPort: 31130
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+# Redis
+---    
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-redis-qa
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-redis-qa
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-redis-qa
+    spec:
+      containers:
+      - name: {{ .Release.Name }}
+        image: "redis:alpine"
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 6379
+#### For dev environment ####
+{{- else if eq .Values.env "dev" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-app-devolopment 
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-app-devolopment
+    spec:
+      volumes:
+      - name: {{ .Values.pvcnginx }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcnginx}}
+      - name: {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp}}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      - name: {{ .Values.nginx_config }}
+        configMap:
+          name: {{ .Values.nginx_config }}   
+      containers:
+      - name: {{ .Release.Name }}-app-devolopment
+        image: nginx:latest 
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+ #       command: ["/bin/bash"]
+#        args: ["-c", "apt update -y && apt install nodejs npm -y"]
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: /etc/nginx/conf.d/
+          name: {{ .Values.nginx_config }}
+        - mountPath:  /etc/nginx/ 
+          name: {{ .Values.pvcnginx }}
+        - mountPath:  /var/log/nginx/
+          name: {{ .Values.pvcnginx }}
+
+        # PHP container
+      - name: {{ .Release.Name }}-php-devolopment
+        image: remdex/livehelperchat-php:latest
+        resources:
+        {{- include "lhc.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - mountPath: "/code/"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/lhcphpresque"
+          name: {{ .Values.pvccode }}
+        - mountPath: "/code/extension/nodjshelper"
+          name: {{ .Values.pvccode }}
+        - mountPath: /scripts
+          name: {{ .Values.pvcphp }}
+      #- name: abc
+       # image: nginx:latest
+        #- mountPath:  /var/log/nginx/
+        #  name: {{ .Values.pvcnginx }}                                      
+
+#MariaDB
+---
+apiVersion: apps/v1
+{{- if eq .Values.kind "statefulset" }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ .Release.Name }}-db-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db-devolopment
+  {{- if and (eq .Values.kind "statefulset") (eq .Values.env "prod") }}
+  serviceName: {{ .Release.Name }}-db-devolopment
+  {{- end }}  
+  template:
+    metadata:
+      labels:
+       app: {{ .Release.Name }}-db-devolopment
+    spec:    
+      containers:
+      - name: {{ .Release.Name }}-db-devolopment
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        resources:
+        {{- include "db.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name:  {{ .Values.pvcdatabase }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcdatabase }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcdatabase }}  
+---
+# PHP resque
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-resque-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-resque-devolopment
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-resque-devolopment
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name:  {{ .Values.pvcphp }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-resque-devolopment
+        image: remdex/livehelperchat-php-resque:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+
+# Cobrowser
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-cobrowser-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-cobrowser-devolopment
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-cobrowser-devolopment
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-cobrowser-devolopment
+        image: remdex/livehelperchat-cobrowse:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 31130
+
+# NodeJS helper        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nodejshelper-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-nodejshelper-devolopment
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-nodejshelper-devolopment
+    spec:
+      containers:
+      - name: {{ .Release.Name }}-nodejshelper-devolopment
+        image: remdex/livehelperchat-nodejshelper:latest
+        resources:
+        {{- include "nodejs.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3000
+
+# PHP cronjob
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-php-cronjob-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-php-cronjob-devolopment
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-php-cronjob-devolopment
+   
+    spec:
+      volumes:
+      - name:  {{ .Values.pvccode }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvccode }}
+      - name: {{ .Values.pvcphp }}
+      containers:
+      - name: {{ .Release.Name }}-php-cronjob-devolopment
+        image: remdex/livehelperchat-php-cronjob:latest
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+#        ports:
+ #       - containerPort: 31130
+        volumeMounts:
+          - mountPath: "/code/"
+            name: {{ .Values.pvccode }}
+          - mountPath: "/code/extension/lhcphpresque"
+            name: {{ .Values.pvccode }}
+          - mountPath: /scripts
+            name: {{ .Values.pvcphp }}
+# Redis
+---    
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-redis-devolopment
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-redis-devolopment
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-redis-devolopment
+    spec:
+      containers:
+      - name: {{ .Release.Name }}
+        image: "redis:alpine"
+        resources:
+        {{- include "other.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 6379
+{{- end }}
