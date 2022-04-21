@@ -5,19 +5,20 @@ import os,re,shutil,sys
 import subprocess
 import fnmatch
 
+
+### Define app directory and action ###
+
+
 nginx_config_mod = sys.argv[1]  
 env = ''    
 app_name = ''
 action = ''
-find = ''
-replace_key = ''
-replace_value = ''
 php_upstream = ''
 nodejs_upstream = ''
 cobr_upstream = ''
-set = ''  
-     
-#### Insert y first if you want to modify nginx config:
+set = ''    
+## Insert text to modify
+# if len(sys.argv[1])>0:    
 if sys.argv[1] == "y":
     action = sys.argv[2]
     app_name = sys.argv[3]
@@ -26,35 +27,29 @@ if sys.argv[1] == "y":
     cobr_upstream = sys.argv[6]
     env = sys.argv[7]
     set = sys.argv[8]
-    ### If want to modify other text in Nginx config ###
-    if len(sys.argv[9]) > 1 :
-        find = sys.argv[9]
-        replace_key = sys.argv[10]
-        if len(sys.argv[11]) > 1:
-            replace_value = sys.argv[11]
-    ### Print value you want to modify ###
     print("PHP upstream: %s"%php_upstream + 
-        "\nNodejs upstream: %s"%nodejs_upstream + 
-        "\nCoBrowser upstream: %s"%cobr_upstream +
-        "\nOther replace:%s"%find + " to " + replace_key)
-#### If you only want to list or uninstall ####
+          "\nNodejs upstream: %s"%nodejs_upstream + 
+          "\nCoBrowser upstream: %s"%cobr_upstream )
 elif sys.argv[1]=="list": 
     action = sys.argv[1]
     print("Helm list")
     subprocess.call("helm " + action)
     sys.exit()
+    # sys.argv[2:] = ""
 elif sys.argv[1] == "un":
     app_name = sys.argv[2]
     print("Executing command: helm " + "uninstall" + " " + app_name  )
     subprocess.call("helm " + "uninstall" + " " + app_name)
     sys.exit()
-#### If install or upgrade without modify nginx config ####
 else :
     action = sys.argv[1]
-    app_name = sys.argv[2]  
+    app_name = sys.argv[2]
     env = sys.argv[3]
     set = sys.argv[4]
-                       
+
+            
+## Define environment   
+    
 #### Find the app directory and move to it ###
 def get_root_app():
     pattern = app_name
@@ -64,39 +59,33 @@ def get_root_app():
                 root_app = os.path.abspath(path_app)  # Path from root directory
                 print("App directory: " + root_app)
                 return root_app  ## Return the path of helm chart
-            
-#### Modify nginx config ####
+### Modify nginx config ###
 def modify_nginx():
-    global php_upstream, nodejs_upstream, cobr_upstream  ## Get some variable from ouside
+    global php_upstream, nodejs_upstream, cobr_upstream
     ### Find template file ###            
-    conf_file = "site-nodejs-template.conf" ## Config file parttern
+    conf_file = "site-nodejs-template.conf"
     def find_root_conf():
         for root, dirs, files in os.walk(r"C:/Users/hung/Desktop/Devops/"):
             for filename in fnmatch.filter(files, conf_file):
                 path_conf = os.path.join(root,filename)
                 root_conf = os.path.abspath(path_conf)
+                #print("Config file directory: " + root_conf)
                 return root_conf  ## Return the file with abspath     
-    src_file = str(find_root_conf()) ## Template config file found from find_root_conf()
-    des_file = get_root_app() + "/site-nodejs.conf"  ## Destination folder from get_root_app() + des file
+    src_file = str(find_root_conf())
+    #print(type(src_file))
+    des_file = get_root_app() + "/site-nodejs.conf"
     shutil.copy2(src_file, des_file) #Copy template file to app directory for modify
-    # Replace 
+    # Replace text
     def replace(des_file): 
         ## Open and modify copied file
         with open(des_file, "r+") as file:
             file_contents = file.read()
-            ## If you insert y first 
-            if sys.argv[1] == "y":
-                if len(sys.argv[4]) > 1:
-                    file_contents = re.sub("fastcgi_pass .*", "fastcgi_pass %s"%sys.argv[4] + ";" , file_contents )
-                ## Modify nodejs upstream   
-                if len(sys.argv[5]) > 1:  
-                    file_contents = re.sub("proxy_pass http://.*nodejs.*;", "proxy_pass %s"%sys.argv[5] + ";", file_contents ) 
-                ## Modify cobrowser upstream  
-                if len(sys.argv[6]) > 1:   
-                    file_contents = re.sub("proxy_pass http://.*cobr.*;", "proxy_pass %s"%sys.argv[6] + ";", file_contents ) 
-                ## If you want to modify some other text in conf file
-                if len(sys.argv[9]) > 1:
-                    file_contents = re.sub(find, replace_key + " " + replace_value  , file_contents )
+            # Compile and modify php upstream  
+            file_contents = re.sub("fastcgi_pass .*", "fastcgi_pass %s"%sys.argv[4] + ";" , file_contents )
+            # Compile and modify nodejs upstream      
+            file_contents = re.sub("proxy_pass http://.*nodejs.*;", "proxy_pass %s"%sys.argv[5] + ";", file_contents ) 
+            # Compile and modify cobrowser upstream      
+            file_contents = re.sub("proxy_pass http://.*cobr.*;", "proxy_pass %s"%sys.argv[6] + ";", file_contents ) 
             file.seek(0)
             file.truncate()
             file.write(file_contents)
@@ -114,20 +103,23 @@ def install():
     elif env=="qa":
         env = "values-QA.yaml"
     ## Action
-    if action=="install" or action=="template" or action=="upgrade" :
-        if len(set) > 1 and len(env) > 1: # if insert set 
-            print("Executing command: helm " + action + " " + app_name + " . " "--set " + str(set) + " -f " + env )
-            subprocess.call("helm " + action + " " + app_name + " . " " --set " + str(set) + " -f " + env )  
-        elif len(set) < 2 and len(env) > 1 : # If insert env but not insert set:
-            print("Executing command: helm " + action + " " + app_name + " . -f " + env )
-            subprocess.call("helm " + action + " " + app_name + " . -f " + env )
-        elif len(set) > 1 and len(env) < 2:
-            print("Executing command: helm " + action + " " + app_name + " . --set " + str(set))
-            subprocess.call("helm " + action + " " + app_name + " . --set " + str(set) )
-        else :
-            print("Executing command: helm " + action + " " + app_name + " . ")
-            subprocess.call("helm " + action + " " + app_name + " . " ) 
-            
+    if action=="un" :
+        action = "uninstall"
+        print("Executing command: helm " + action + " " + app_name + " " +  sys.argv[3] )
+        subprocess.call("helm " + action + " " + app_name)
+    elif action=="in"   :
+        action = "install"
+        print("Executing command: helm " + action + " " + app_name + " . " "--set " + str(set) + " -f " + env )
+        subprocess.call("helm " + action + " " + app_name + " . " " --set " + str(set) + " -f " + env )   
+    elif action=="up":
+        action = "upgrade"
+        print("Executing command: helm " + action + " " + app_name + " . " + "-f " + env)
+        subprocess.call("helm " + action + " " + app_name + " . " + "-f " + env)
+    elif action=="tem":
+        action = "template"
+        subprocess.call("helm " + action + " " + app_name + " . " + "--debug" + " -f " + env + " --set " + str(set))
+        print("Command executed: helm " + action + " " + app_name + " . " + "--debug" + " -f " + env + " --set " + str(set)) 
+
 #### Finally,after collected essential condition ####
 #### call theo 2 main_action function: modify_nginx() and install() ####
 try: 
