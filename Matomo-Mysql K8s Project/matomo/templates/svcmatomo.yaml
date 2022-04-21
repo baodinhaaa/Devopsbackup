@@ -1,0 +1,57 @@
+{{- if eq .Values.env "prod" }}
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-dev
+spec:
+  selector:
+    app: {{ .Release.Name }}-dev
+  type: ClusterIP
+  ports:
+  - name: matomo-port
+    port:  {{ .Values.port_matomo }}
+    targetPort:  {{ .Values.svcport_matomo }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name:  {{ .Release.Name }}-db-dev
+spec:
+  selector:
+    app: {{ .Release.Name }}-db-dev
+  type: ClusterIP
+  ports:
+  - name: mysql-port
+    port:  {{ .Values.svcport_db }}
+    targetPort: {{ .Values.tgport_db }}
+
+
+### For dev environment ###
+{{- else if eq .Values.env "dev" }}
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-dev
+spec:
+  selector:
+    app: {{ .Release.Name }}-dev
+  type: ClusterIP
+  ports:
+  - name: matomo-port
+    port:  {{ .Values.port_matomo }}
+    targetPort:  {{ .Values.svcport_matomo }}
+    
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name:  {{ .Release.Name }}-db-dev
+spec:
+  selector:
+    app: {{ .Release.Name }}-db-dev
+  type: ClusterIP
+  ports:
+  - name: mysql-port
+    port:  {{ .Values.svcport_db }}
+    targetPort: {{ .Values.tgport_db }}
+{{- end }}

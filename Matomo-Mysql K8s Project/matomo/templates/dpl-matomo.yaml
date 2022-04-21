@@ -1,0 +1,156 @@
+# Create namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  {{- if eq .Values.env "prod" }}
+  name: {{ .Values.ns}}
+  {{- else if eq .Values.env "qa" }}
+  name: {{ .Values.ns }}
+  {{- else if eq .Values.env "dev" -}}
+  name: {{ .Values.ns }}
+  {{- end }}
+---
+{{- if eq .Values.env "prod" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      volumes:
+      - name: {{ .Values.pvcmatomo }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcmatomo }}
+
+      containers:
+      - name: {{ .Release.Name }}
+        image: matomo:latest
+        resources:
+        {{- include "matomo.resources" . | nindent 10}}
+        ports:
+        - containerPort: {{ .Values.port_matomo }}
+        volumeMounts:
+        - mountPath: "/var/www/html"
+          name: {{ .Values.pvcmatomo }}
+---
+apiVersion: apps/v1
+{{- if eq .Values.kind "statefulset" }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ .Release.Name }}-db-production
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db-production
+  {{- if and (eq .Values.kind "statefulset") (eq .Values.env "prod") }}
+  serviceName: {{ .Release.Name }}-db-production
+  {{- end }}  
+  template:
+    metadata:
+      labels:
+       app: {{ .Release.Name }}-db-production
+    spec:    
+      containers:
+      - name: {{ .Release.Name }}-db-production
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        resources:
+        {{- include "db.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name:  {{ .Values.pvcdatabase }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcdatabase }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcdatabase }} 
+
+### For Dev environment ###
+{{- else if .Values.env "dev" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-dev
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-dev
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-dev
+    spec:
+      volumes:
+      - name: {{ .Values.pvcmatomo }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcmatomo }}
+
+      containers:
+      - name: {{ .Release.Name }}-dev
+        image: matomo:latest
+        resources:
+        {{- include "matomo.resources" . | nindent 10}}
+        ports:
+        - containerPort: {{ .Values.ports }}
+        volumeMounts:
+        - mountPath: "/var/www/html"
+          name: {{ .Values.pvcmatomo }}
+---
+apiVersion: apps/v1
+{{- if eq .Values.kind "statefulset" }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ .Release.Name }}-db-dev
+  namespace: {{ .Values.ns }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-db-dev
+  {{- if and (eq .Values.kind "statefulset") (eq .Values.env "prod") }}
+  serviceName: {{ .Release.Name }}-db-dev
+  {{- end }}  
+  template:
+    metadata:
+      labels:
+       app: {{ .Release.Name }}-db-dev
+    spec:    
+      containers:
+      - name: {{ .Release.Name }}-db-dev
+        image: mariadb:latest
+        env:
+          - name: {{ .Values.dbenv }}
+            valueFrom:
+              secretKeyRef:
+                name:  {{ .Values.secretname }}
+                key: password
+        resources:
+        {{- include "db.resources" . | nindent 10 }}
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name:  {{ .Values.pvcdatabase }}
+          mountPath:  /var/lib/mysql
+      volumes:
+      - name: {{ .Values.pvcdatabase }}
+        persistentVolumeClaim:
+          claimName: {{ .Values.pvcdatabase }}

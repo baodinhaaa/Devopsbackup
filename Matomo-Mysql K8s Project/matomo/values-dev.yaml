@@ -1,0 +1,35 @@
+### For environment ###
+ns: matomo-dev
+env: dev
+
+### For matomo-app ###
+port_matomo: 8880
+nodeport_matomo: 31880
+svcport_matomo: 80
+### Resources ###
+resources_lhc:
+  limits:
+    memory: 150Mi
+    cpu: 200m
+  requests:
+    memory: 200Mi
+    cpu: 200m
+
+resources_db:
+  limits:
+    memory: 200Mi
+    cpu: 200m
+  requests:
+    memory: 200Mi
+    cpu: 200m
+
+pvcmatomo: matomo-install-volume
+capacity_matomo: 800Mi
+
+## For service mysql
+svcport_db: 31306
+tgport_db: 3306
+pvcdatabase: matomo-install-db-volume
+capacity_db_matomo: 800Mi
+dbenv: MYSQL_ROOT_PASSWORD
+secretname: matomo-install-secret-db
